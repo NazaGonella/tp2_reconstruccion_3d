@@ -58,7 +58,7 @@ def draw_checkerboard(
 def detect_board(CHECKERBOARD, gray, criteria=None, subpix_win=(7, 7)):
 
     # shape = gray.shape[::-1]
-    gray = cv2.blur(gray, (5, 5))
+    # gray = cv2.blur(gray, (5, 5))
 
     # Find the chess board corners
     # If desired number of corners are found in the image then ret = true
