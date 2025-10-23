@@ -54,6 +54,9 @@ R1, R2, P1, P2, Q, _, _ = cv2.stereoRectify(
     flags=cv2.CALIB_ZERO_DISPARITY, alpha=0
 )
 
+K1_rect = P1[:3, :3]  # Use rectified camera matrix
+K2_rect = P2[:3, :3]
+
 cx1 = P2[0, 2]  # principal point x of rectified right camera
 
 baseline = np.linalg.norm(T)
@@ -76,7 +79,7 @@ calibration = Calibration(**{
 # copypaste del pdf consigna, seccion 5, usando el modulo calib de la tutorial 6
 
 checkerboard=(9,6)
-cuadradito_size_mm=20
+cuadradito_size_mm=25
 object_3dpoints=calib.board_points(checkerboard)
 object_3dpoints_mm=object_3dpoints*cuadradito_size_mm
 nubes=[]
@@ -108,12 +111,17 @@ for i in range(1,10):      #tenemos 55 imagenes
 
     left_found,left_corners=calib.detect_board(checkerboard,left_rectified_gray)
 
-    ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,left_corners,K1,dist1,flags=cv2.SOLVEPNP_IPPE)
+    ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,left_corners,K1_rect,None,flags=cv2.SOLVEPNP_IPPE)
 
-    c_R_o_left=cv2.Rodrigues(rvec)     # camera to object rotation
-    c_T_o_left=np.column_stack((c_R_o_left[0],tvec))    # camera to object transformation
-    c_T_o_left=np.vstack((c_T_o_left,[0,0,0,1]))
-    o_T_c_left=np.linalg.inv(c_T_o_left)        # object to camera transformation
+    # c_R_o_left=cv2.Rodrigues(rvec)     # camera to object rotation
+    # c_T_o_left=np.column_stack((c_R_o_left[0],tvec))    # camera to object transformation
+    # c_T_o_left=np.vstack((c_T_o_left,[0,0,0,1]))
+    # o_T_c_left=np.linalg.inv(c_T_o_left)        # object to camera transformation
+
+    c_R_o_left = cv2.Rodrigues(rvec)[0]
+    c_T_o_left = np.column_stack((c_R_o_left, tvec))
+    c_T_o_left = np.vstack((c_T_o_left, [0, 0, 0, 1]))
+    o_T_c_left = np.linalg.inv(c_T_o_left)        # object to camera transformation
 
 
 
@@ -123,12 +131,12 @@ for i in range(1,10):      #tenemos 55 imagenes
 
     right_found,right_corners=calib.detect_board(checkerboard,right_rectified_gray)
 
-    ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,right_corners,K2,dist2,flags=cv2.SOLVEPNP_IPPE)
+    # ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,right_corners,K2,dist2,flags=cv2.SOLVEPNP_IPPE)
 
-    c_R_o_right=cv2.Rodrigues(rvec)     # camera to object rotation
-    c_T_o_right=np.column_stack((c_R_o_right[0],tvec))    # camera to object transformation
-    c_T_o_right=np.vstack((c_T_o_right,[0,0,0,1]))
-    o_T_c_right=np.linalg.inv(c_T_o_right)        # object to camera transformation
+    # c_R_o_right=cv2.Rodrigues(rvec)     # camera to object rotation
+    # c_T_o_right=np.column_stack((c_R_o_right[0],tvec))    # camera to object transformation
+    # c_T_o_right=np.vstack((c_T_o_right,[0,0,0,1]))
+    # o_T_c_right=np.linalg.inv(c_T_o_right)        # object to camera transformation
 
 
 
