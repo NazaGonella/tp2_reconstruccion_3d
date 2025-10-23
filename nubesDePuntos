@@ -1,0 +1,230 @@
+
+import calib
+import pickle
+import numpy as np
+import open3d as o3d
+import cv2
+
+# Cre Stereo
+
+import cv2
+import json
+import numpy as np
+from pathlib import Path
+
+
+from disparity.method_cre_stereo import CREStereo
+from disparity.method_opencv_bm import StereoBM, StereoSGBM
+from disparity.methods import Calibration, InputPair, Config
+
+img=cv2.imread("./fotos_objetos_rectificadas/left_1_rect.jpg")
+
+w, h = img.shape[1], img.shape[0]
+
+
+
+with open("./data/stereo_calibration.pkl", "rb") as f:
+    c = pickle.load(f)
+
+# Intrinsic matrices
+K1 = c['left_K']
+K2 = c['right_K']
+
+# K = [[fx, 0, cx],
+#      [0, fy, cy],
+#      [0,  0,  1]]
+
+fx  = K1[0, 0]
+fy  = K1[1, 1]
+cx0 = K1[0, 2]  # principal point x of left camera
+cy0 = K1[1, 2]  # principal point y of left camera
+
+# cx1 is from the rectified right projection matrix P2
+# Compute rectification first:
+R = c['R']
+T = c['T']
+image_size = c['image_size']
+dist1 = c['left_dist']
+dist2 = c['right_dist']
+
+R1, R2, P1, P2, Q, _, _ = cv2.stereoRectify(
+    K1, dist1,
+    K2, dist2,
+    image_size, R, T,
+    flags=cv2.CALIB_ZERO_DISPARITY, alpha=0
+)
+
+cx1 = P2[0, 2]  # principal point x of rectified right camera
+
+baseline = np.linalg.norm(T)
+calibration = Calibration(**{
+    "width": w,
+    "height": h,
+    "baseline_meters": baseline / 1000,
+    "fx": fx,
+    "fy": fy,
+    "cx0": cx0,
+    "cx1": cx0,
+    "cy": cy0,
+    "depth_range": [0.05, 20.0],
+    "left_image_rect_normalized": [0, 0, 1, 1]
+})
+
+
+
+
+# copypaste del pdf consigna, seccion 5, usando el modulo calib de la tutorial 6
+
+checkerboard=(9,6)
+cuadradito_size_mm=20
+object_3dpoints=calib.board_points(checkerboard)
+object_3dpoints_mm=object_3dpoints*cuadradito_size_mm
+nubes=[]
+
+for i in range(1,10):      #tenemos 55 imagenes
+    left_rectified=cv2.imread(f"./fotos_objetos_rectificadas/left_{i}_rect.jpg")
+    right_rectified=cv2.imread(f"./fotos_objetos_rectificadas/right_{i}_rect.jpg")
+    left_rectified=cv2.cvtColor(left_rectified,cv2.COLOR_BGR2RGB)
+    right_rectified=cv2.cvtColor(right_rectified,cv2.COLOR_BGR2RGB)
+
+    # correct color conversion (OpenCV uses BGR)
+    left_gray = cv2.cvtColor(left_rectified, cv2.COLOR_BGR2GRAY)
+    right_gray = cv2.cvtColor(right_rectified, cv2.COLOR_BGR2GRAY)
+
+    # detect boards and guard
+    left_found, left_corners = calib.detect_board(checkerboard, left_gray)
+    right_found, right_corners = calib.detect_board(checkerboard, right_gray)
+
+    if not left_found or left_corners is None or len(left_corners) < 4:
+        print(f"[{i}] left board not found or too few corners ({None if left_corners is None else len(left_corners)}) — skipping")
+        continue
+    if not right_found or right_corners is None or len(right_corners) < 4:
+        print(f"[{i}] right board not found or too few corners ({None if right_corners is None else len(right_corners)}) — skipping")
+        continue
+
+    #imagen izquierda
+    left_rectified_gray=cv2.cvtColor(left_rectified,cv2.COLOR_RGB2GRAY)
+    left_rectified_gray = left_rectified_gray.astype(np.uint8)
+
+    left_found,left_corners=calib.detect_board(checkerboard,left_rectified_gray)
+
+    ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,left_corners,K1,dist1,flags=cv2.SOLVEPNP_IPPE)
+
+    c_R_o_left=cv2.Rodrigues(rvec)     # camera to object rotation
+    c_T_o_left=np.column_stack((c_R_o_left[0],tvec))    # camera to object transformation
+    c_T_o_left=np.vstack((c_T_o_left,[0,0,0,1]))
+    o_T_c_left=np.linalg.inv(c_T_o_left)        # object to camera transformation
+
+
+
+    #imagen derecha
+    right_rectified_gray=cv2.cvtColor(right_rectified,cv2.COLOR_RGB2GRAY)
+    right_rectified_gray = right_rectified_gray.astype(np.uint8)
+
+    right_found,right_corners=calib.detect_board(checkerboard,right_rectified_gray)
+
+    ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,right_corners,K2,dist2,flags=cv2.SOLVEPNP_IPPE)
+
+    c_R_o_right=cv2.Rodrigues(rvec)     # camera to object rotation
+    c_T_o_right=np.column_stack((c_R_o_right[0],tvec))    # camera to object transformation
+    c_T_o_right=np.vstack((c_T_o_right,[0,0,0,1]))
+    o_T_c_right=np.linalg.inv(c_T_o_right)        # object to camera transformation
+
+
+
+
+
+    # # --- Supongamos que ya tenés estas poses ---
+    # # c_T_o_left y c_T_o_right: del solvePnP
+    # # Por ejemplo:
+    # # c_T_o_left  = np.array([...])
+    # # c_T_o_right = np.array([...])
+
+    # # Invertimos para obtener cámara respecto al tablero
+    # o_T_cL = np.linalg.inv(c_T_o_left)
+    # o_T_cR = np.linalg.inv(c_T_o_right)
+
+    # # Transformación derecha respecto a izquierda
+    # cL_T_cR = np.linalg.inv(o_T_cL) @ o_T_cR
+
+
+    import os
+
+    models_path = "models"
+    if not os.path.exists(models_path):
+        os.makedirs(models_path)
+
+
+
+
+    #models_path = Path.home() / ".cache" / "stereodemo" / "models"
+    models_path = Path(models_path)
+    pair = InputPair(left_rectified, right_rectified, calibration)
+    # pair = InputPair(left_image, right_image, calibration)
+    config = Config(models_path=models_path)
+
+    # params = {
+    #    "Shape": "1280x720",
+    #    "Mode": "combined",
+    #    "Iterations": 20
+    #}
+    method = CREStereo(config)
+
+    #method.parameters["Shape"].set_value("640x480")
+    method.parameters["Shape"].set_value("1280x720")
+    # method.parameters["Iterations"].set_value("10")
+
+    #method.parameters.update(params)
+    # method = StereoBM(config)
+    # method = StereoSGBM(config)
+    # method = StereoBM(config)
+    disparity = method.compute_disparity(pair)
+
+
+
+    print(type(disparity))
+    print(dir(disparity))
+
+    disp = disparity.disparity_pixels.astype(np.float32)
+    points_3D = cv2.reprojectImageTo3D(disp, Q)
+
+    # Mask invalid points
+    mask = disp > 0
+    points = points_3D[mask]
+    colors = left_rectified[mask] / 255.0  # normalize colors to [0, 1]
+
+    # pcd = o3d.geometry.PointCloud()
+    # pcd.points = o3d.utility.Vector3dVector(points)
+    # pcd.colors = o3d.utility.Vector3dVector(colors)
+    # nubes.append(pcd)
+
+    # transform points from left-camera coordinates to object/checkerboard (world) coordinates
+    pts_h = np.hstack([points, np.ones((points.shape[0], 1), dtype=points.dtype)])  # (N,4)
+    pts_world = (o_T_c_left @ pts_h.T).T[:, :3]  # use the camera->object 4x4 matrix you computed
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(pts_world)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+    # store tuple (pointcloud, camera->world transform) if you want frames later
+    nubes.append((pcd, o_T_c_left))
+
+# o3d.visualization.draw_geometries([pcd])
+# Merge all transformed clouds into a single cloud
+combined = o3d.geometry.PointCloud()
+frames = []
+
+# optional: board/world origin frame
+frame_board = o3d.geometry.TriangleMesh.create_coordinate_frame(size=50.0, origin=[0, 0, 0])
+frames.append(frame_board)
+
+for idx, (pc, T) in enumerate(nubes):
+    # pc is already in world coordinates (we transformed above), so just add
+    combined += pc
+    # add a camera frame (camera pose expressed in world coordinates is inverse of o_T_c if needed)
+    cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=20.0)
+    # T is camera->world (o_T_c_left). If T maps differently, adjust accordingly.
+    cam_frame.transform(T)
+    frames.append(cam_frame)
+
+o3d.visualization.draw_geometries([combined] + frames)
+
