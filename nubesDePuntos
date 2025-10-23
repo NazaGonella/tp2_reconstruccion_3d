@@ -17,7 +17,7 @@ from disparity.method_cre_stereo import CREStereo
 from disparity.method_opencv_bm import StereoBM, StereoSGBM
 from disparity.methods import Calibration, InputPair, Config
 
-img=cv2.imread("./fotos_objetos_rectificadas/left_1_rect.jpg")
+img=cv2.imread("./fotos_objetos_rectificadas_mezcladas/left_1_rect.jpg")
 
 w, h = img.shape[1], img.shape[0]
 
@@ -79,14 +79,14 @@ calibration = Calibration(**{
 # copypaste del pdf consigna, seccion 5, usando el modulo calib de la tutorial 6
 
 checkerboard=(9,6)
-cuadradito_size_mm=25
+cuadradito_size_mm=24.2
 object_3dpoints=calib.board_points(checkerboard)
 object_3dpoints_mm=object_3dpoints*cuadradito_size_mm
 nubes=[]
 
 for i in range(1,10):      #tenemos 55 imagenes
-    left_rectified=cv2.imread(f"./fotos_objetos_rectificadas/left_{i}_rect.jpg")
-    right_rectified=cv2.imread(f"./fotos_objetos_rectificadas/right_{i}_rect.jpg")
+    left_rectified=cv2.imread(f"./fotos_objetos_rectificadas_mezcladas/left_{i}_rect.jpg")
+    right_rectified=cv2.imread(f"./fotos_objetos_rectificadas_mezcladas/right_{i}_rect.jpg")
     left_rectified=cv2.cvtColor(left_rectified,cv2.COLOR_BGR2RGB)
     right_rectified=cv2.cvtColor(right_rectified,cv2.COLOR_BGR2RGB)
 

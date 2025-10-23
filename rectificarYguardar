@@ -24,7 +24,7 @@ import numpy as np
 #     R,
 #     T,
 #     flags=cv2.CALIB_ZERO_DISPARITY,
-#     alpha=-1
+#     alpha=0
 # )
 
 with open("./data/stereo_maps.pkl", "rb") as f:
@@ -38,7 +38,7 @@ right_map_y = maps["right_map_y"]
 
 # === RUTAS ===
 input_dir = "./fotos_objetos"
-output_dir = "./fotos_objetos_rectificadas"
+output_dir = "./fotos_objetos_rectificadas_mezcladas"
 os.makedirs(output_dir, exist_ok=True)
 
 # === GENERAR MAPAS DE RECTIFICACIÓN ===
