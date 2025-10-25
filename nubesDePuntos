@@ -72,7 +72,7 @@ calibration = Calibration(**{
     "fx": fx,
     "fy": fy,
     "cx0": cx0,
-    "cx1": cx0,
+    "cx1": cx1,
     "cy": cy0,
     "depth_range": [0.05, 20.0],
     "left_image_rect_normalized": [0, 0, 1, 1]
@@ -205,6 +205,10 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pts_world_filtered)
     pcd.colors = o3d.utility.Vector3dVector(colors_filtered)
+    z_coords = pts_world_filtered[:, 2]
+    object_height = z_coords.max()-z_coords.min()  # Height above checkerboard
+    print(f"\n=== Object Height image {i}===")
+    print(f"{object_height:.1f} mm")
 #####
     # pcd = o3d.geometry.PointCloud()
     # pcd.points = o3d.utility.Vector3dVector(pts_world)
@@ -230,12 +234,7 @@ for idx, (pc, T) in enumerate(nubes):
 #     cam_frame.transform(T)
 #     frames.append(cam_frame)
 
-z_coords = pts_world_filtered[:, 2]
-object_height = z_coords.max()  # Height above checkerboard
-print(f"\n=== Object Height ===")
-print(f"{object_height:.1f} mm")
-print(f"{object_height/10:.1f} cm")
-print(f"{object_height/25.4:.2f} inches")
+
 
 o3d.visualization.draw_geometries([combined])
 o3d.io.write_point_cloud("nubeDePuntosBuddha.ply", combined)
