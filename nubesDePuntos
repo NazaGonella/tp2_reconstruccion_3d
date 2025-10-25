@@ -7,23 +7,21 @@ import cv2
 
 # Cre Stereo
 
-import cv2
+import os
 import json
-import numpy as np
 from pathlib import Path
-
 
 from disparity.method_cre_stereo import CREStereo
 from disparity.method_opencv_bm import StereoBM, StereoSGBM
 from disparity.methods import Calibration, InputPair, Config
 
-img=cv2.imread("./fotos_objetos_rectificadas_mezcladas/left_1_rect.jpg")
+img=cv2.imread("./fotos_buddha_rectificadas/left_1_rect.jpg")
 
 w, h = img.shape[1], img.shape[0]
 
 
 
-with open("./data/stereo_calibration.pkl", "rb") as f:
+with open("./data/calibracionBuddha/stereo_calibration_new.pkl", "rb") as f:
     c = pickle.load(f)
 
 # Intrinsic matrices
@@ -54,10 +52,17 @@ R1, R2, P1, P2, Q, _, _ = cv2.stereoRectify(
     flags=cv2.CALIB_ZERO_DISPARITY, alpha=0
 )
 
+
+if 'reprojection_error' in c:
+    print(f"Calibration reprojection error: {c['reprojection_error']}")
+
+
 K1_rect = P1[:3, :3]  # Use rectified camera matrix
 K2_rect = P2[:3, :3]
 
 cx1 = P2[0, 2]  # principal point x of rectified right camera
+
+
 
 baseline = np.linalg.norm(T)
 calibration = Calibration(**{
@@ -73,20 +78,17 @@ calibration = Calibration(**{
     "left_image_rect_normalized": [0, 0, 1, 1]
 })
 
-
-
-
 # copypaste del pdf consigna, seccion 5, usando el modulo calib de la tutorial 6
 
-checkerboard=(9,6)
+checkerboard=(10,7)
 cuadradito_size_mm=24.2
 object_3dpoints=calib.board_points(checkerboard)
 object_3dpoints_mm=object_3dpoints*cuadradito_size_mm
 nubes=[]
 
-for i in range(1,10):      #tenemos 55 imagenes
-    left_rectified=cv2.imread(f"./fotos_objetos_rectificadas_mezcladas/left_{i}_rect.jpg")
-    right_rectified=cv2.imread(f"./fotos_objetos_rectificadas_mezcladas/right_{i}_rect.jpg")
+for i in range(0,6):      #tenemos 21 imagenes de banana
+    left_rectified=cv2.imread(f"./fotos_buddha_rectificadas/left_{i}_rect.jpg")
+    right_rectified=cv2.imread(f"./fotos_buddha_rectificadas/right_{i}_rect.jpg")
     left_rectified=cv2.cvtColor(left_rectified,cv2.COLOR_BGR2RGB)
     right_rectified=cv2.cvtColor(right_rectified,cv2.COLOR_BGR2RGB)
 
@@ -113,11 +115,6 @@ for i in range(1,10):      #tenemos 55 imagenes
 
     ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,left_corners,K1_rect,None,flags=cv2.SOLVEPNP_IPPE)
 
-    # c_R_o_left=cv2.Rodrigues(rvec)     # camera to object rotation
-    # c_T_o_left=np.column_stack((c_R_o_left[0],tvec))    # camera to object transformation
-    # c_T_o_left=np.vstack((c_T_o_left,[0,0,0,1]))
-    # o_T_c_left=np.linalg.inv(c_T_o_left)        # object to camera transformation
-
     c_R_o_left = cv2.Rodrigues(rvec)[0]
     c_T_o_left = np.column_stack((c_R_o_left, tvec))
     c_T_o_left = np.vstack((c_T_o_left, [0, 0, 0, 1]))
@@ -125,38 +122,16 @@ for i in range(1,10):      #tenemos 55 imagenes
 
 
 
-    #imagen derecha
-    right_rectified_gray=cv2.cvtColor(right_rectified,cv2.COLOR_RGB2GRAY)
-    right_rectified_gray = right_rectified_gray.astype(np.uint8)
+    # #imagen derecha
+    # right_rectified_gray=cv2.cvtColor(right_rectified,cv2.COLOR_RGB2GRAY)
+    # right_rectified_gray = right_rectified_gray.astype(np.uint8)
 
-    right_found,right_corners=calib.detect_board(checkerboard,right_rectified_gray)
+    # right_found,right_corners=calib.detect_board(checkerboard,right_rectified_gray)
 
-    # ret,rvec,tvec=cv2.solvePnP(object_3dpoints_mm,right_corners,K2,dist2,flags=cv2.SOLVEPNP_IPPE)
+    # print(f"Left corner Y: {left_corners[0, 0, 1]}")
+    # print(f"Right corner Y: {right_corners[0, 0, 1]}")
+    # print(f"Y difference: {abs(left_corners[0, 0, 1] - right_corners[0, 0, 1])}")
 
-    # c_R_o_right=cv2.Rodrigues(rvec)     # camera to object rotation
-    # c_T_o_right=np.column_stack((c_R_o_right[0],tvec))    # camera to object transformation
-    # c_T_o_right=np.vstack((c_T_o_right,[0,0,0,1]))
-    # o_T_c_right=np.linalg.inv(c_T_o_right)        # object to camera transformation
-
-
-
-
-
-    # # --- Supongamos que ya tenés estas poses ---
-    # # c_T_o_left y c_T_o_right: del solvePnP
-    # # Por ejemplo:
-    # # c_T_o_left  = np.array([...])
-    # # c_T_o_right = np.array([...])
-
-    # # Invertimos para obtener cámara respecto al tablero
-    # o_T_cL = np.linalg.inv(c_T_o_left)
-    # o_T_cR = np.linalg.inv(c_T_o_right)
-
-    # # Transformación derecha respecto a izquierda
-    # cL_T_cR = np.linalg.inv(o_T_cL) @ o_T_cR
-
-
-    import os
 
     models_path = "models"
     if not os.path.exists(models_path):
@@ -210,29 +185,61 @@ for i in range(1,10):      #tenemos 55 imagenes
     pts_h = np.hstack([points, np.ones((points.shape[0], 1), dtype=points.dtype)])  # (N,4)
     pts_world = (o_T_c_left @ pts_h.T).T[:, :3]  # use the camera->object 4x4 matrix you computed
 
+##### para la bounding box
+    # Define bounding box in world coordinates (mm)
+    # Adjust these values based on your object's position
+    x_min, x_max = -100, 200   # X range
+    y_min, y_max = -350, -100   # Y range  
+    z_min, z_max = -300, 500   # Z range (above checkerboard)
+
+    # Filter points
+    mask_box = (
+        (pts_world[:, 0] >= x_min) & (pts_world[:, 0] <= x_max) &
+        (pts_world[:, 1] >= y_min) & (pts_world[:, 1] <= y_max) &
+        (pts_world[:, 2] >= z_min) & (pts_world[:, 2] <= z_max)
+    )
+
+    pts_world_filtered = pts_world[mask_box]
+    colors_filtered = colors[mask_box]
+
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pts_world)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    pcd.points = o3d.utility.Vector3dVector(pts_world_filtered)
+    pcd.colors = o3d.utility.Vector3dVector(colors_filtered)
+#####
+    # pcd = o3d.geometry.PointCloud()
+    # pcd.points = o3d.utility.Vector3dVector(pts_world)
+    # pcd.colors = o3d.utility.Vector3dVector(colors)
     # store tuple (pointcloud, camera->world transform) if you want frames later
     nubes.append((pcd, o_T_c_left))
 
 # o3d.visualization.draw_geometries([pcd])
 # Merge all transformed clouds into a single cloud
 combined = o3d.geometry.PointCloud()
-frames = []
 
-# optional: board/world origin frame
-frame_board = o3d.geometry.TriangleMesh.create_coordinate_frame(size=50.0, origin=[0, 0, 0])
-frames.append(frame_board)
+# frames = []
+# # optional: board/world origin frame
+# frame_board = o3d.geometry.TriangleMesh.create_coordinate_frame(size=50.0, origin=[0, 0, 0])
+# frames.append(frame_board)
 
 for idx, (pc, T) in enumerate(nubes):
     # pc is already in world coordinates (we transformed above), so just add
     combined += pc
-    # add a camera frame (camera pose expressed in world coordinates is inverse of o_T_c if needed)
-    cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=20.0)
-    # T is camera->world (o_T_c_left). If T maps differently, adjust accordingly.
-    cam_frame.transform(T)
-    frames.append(cam_frame)
+#     # add a camera frame (camera pose expressed in world coordinates is inverse of o_T_c if needed)
+#     cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=20.0)
+#     # T is camera->world (o_T_c_left). If T maps differently, adjust accordingly.
+#     cam_frame.transform(T)
+#     frames.append(cam_frame)
 
-o3d.visualization.draw_geometries([combined] + frames)
+z_coords = pts_world_filtered[:, 2]
+object_height = z_coords.max()  # Height above checkerboard
+print(f"\n=== Object Height ===")
+print(f"{object_height:.1f} mm")
+print(f"{object_height/10:.1f} cm")
+print(f"{object_height/25.4:.2f} inches")
+
+o3d.visualization.draw_geometries([combined])
+o3d.io.write_point_cloud("nubeDePuntosBuddha.ply", combined)
+
+
+
 
