@@ -163,11 +163,6 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     # method = StereoBM(config)
     disparity = method.compute_disparity(pair)
 
-
-
-    print(type(disparity))
-    print(dir(disparity))
-
     disp = disparity.disparity_pixels.astype(np.float32)
     points_3D = cv2.reprojectImageTo3D(disp, Q)
 
@@ -190,7 +185,7 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     # Adjust these values based on your object's position
     x_min, x_max = -100, 200   # X range
     y_min, y_max = -350, -100   # Y range  
-    z_min, z_max = -300, 500   # Z range (above checkerboard)
+    z_min, z_max = -300, 50   # Z range (above checkerboard)
 
     # Filter points
     mask_box = (
