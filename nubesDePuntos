@@ -185,7 +185,7 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     # Adjust these values based on your object's position
     x_min, x_max = -100, 200   # X range
     y_min, y_max = -350, -100   # Y range  
-    z_min, z_max = -300, 50   # Z range (above checkerboard)
+    z_min, z_max = -300, 20   # Z range (above checkerboard)
 
     # Filter points
     mask_box = (
@@ -200,10 +200,10 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pts_world_filtered)
     pcd.colors = o3d.utility.Vector3dVector(colors_filtered)
-    z_coords = pts_world_filtered[:, 2]
-    object_height = z_coords.max()-z_coords.min()  # Height above checkerboard
-    print(f"\n=== Object Height image {i}===")
-    print(f"{object_height:.1f} mm")
+    # z_coords = pts_world_filtered[:, 2]
+    # object_height = z_coords.max()-z_coords.min()  # Height above checkerboard
+    # print(f"\n=== Object Height image {i}===")
+    # print(f"{object_height:.1f} mm")
 #####
     # pcd = o3d.geometry.PointCloud()
     # pcd.points = o3d.utility.Vector3dVector(pts_world)
@@ -230,6 +230,13 @@ for idx, (pc, T) in enumerate(nubes):
 #     frames.append(cam_frame)
 
 
+all_points = np.asarray(combined.points)
+z_coords = all_points[:, 2]
+object_height = z_coords.max() - z_coords.min()
+
+print(f"\n=== Combined Object Height ===")
+print(f"{object_height:.1f} mm")
+print(f"{object_height/10:.1f} cm")
 
 o3d.visualization.draw_geometries([combined])
 o3d.io.write_point_cloud("nubeDePuntosBuddha.ply", combined)
