@@ -160,4 +160,4 @@ print(f"{object_height:.1f} mm")
 print(f"{object_height/10:.1f} cm")
 
 o3d.visualization.draw_geometries([combined])
-o3d.io.write_point_cloud("nube_de_puntos_buddha.ply", combined)
+o3d.io.write_point_cloud("../ouput/nube_de_puntos_buddha.ply", combined)
