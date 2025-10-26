@@ -70,17 +70,15 @@ object_3dpoints=calib.board_points(checkerboard)
 object_3dpoints_mm=object_3dpoints*cuadradito_size_mm
 nubes=[]
 
-for i in range(0,6):      #tenemos 21 imagenes de banana
+for i in range(0,6):
     left_rectified=cv2.imread(f"./data/fotos_buddha_rectificadas/left_{i}_rect.jpg")
     right_rectified=cv2.imread(f"./data/fotos_buddha_rectificadas/right_{i}_rect.jpg")
     left_rectified=cv2.cvtColor(left_rectified,cv2.COLOR_BGR2RGB)
     right_rectified=cv2.cvtColor(right_rectified,cv2.COLOR_BGR2RGB)
 
-    # correct color conversion (OpenCV uses BGR)
     left_gray = cv2.cvtColor(left_rectified, cv2.COLOR_BGR2GRAY)
     right_gray = cv2.cvtColor(right_rectified, cv2.COLOR_BGR2GRAY)
 
-    # detect boards and guard
     left_found, left_corners = calib.detect_board(checkerboard, left_gray)
     right_found, right_corners = calib.detect_board(checkerboard, right_gray)
 
@@ -102,7 +100,7 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     c_R_o_left = cv2.Rodrigues(rvec)[0]
     c_T_o_left = np.column_stack((c_R_o_left, tvec))
     c_T_o_left = np.vstack((c_T_o_left, [0, 0, 0, 1]))
-    o_T_c_left = np.linalg.inv(c_T_o_left)        # object to camera transformation
+    o_T_c_left = np.linalg.inv(c_T_o_left)
 
     models_path = "models"
     if not os.path.exists(models_path):
@@ -121,22 +119,18 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     disp = disparity.disparity_pixels.astype(np.float32)
     points_3D = cv2.reprojectImageTo3D(disp, Q)
 
-    # Mask invalid points
     mask = disp > 0
     points = points_3D[mask]
-    colors = left_rectified[mask] / 255.0  # normalize colors to [0, 1]
+    colors = left_rectified[mask] / 255.0
 
-    # transform points from left-camera coordinates to object/checkerboard (world) coordinates
     pts_h = np.hstack([points, np.ones((points.shape[0], 1), dtype=points.dtype)])  # (N,4)
-    pts_world = (o_T_c_left @ pts_h.T).T[:, :3]  # use the camera->object 4x4 matrix you computed
+    pts_world = (o_T_c_left @ pts_h.T).T[:, :3]
 
 ##### para la bounding box
-    # Define bounding box in world coordinates (mm)
-    x_min, x_max = -100, 200   # X range
-    y_min, y_max = -350, -100   # Y range  
-    z_min, z_max = -300, 20   # Z range (above checkerboard)
+    x_min, x_max = -100, 200
+    y_min, y_max = -350, -100
+    z_min, z_max = -300, 20
 
-    # Filter points
     mask_box = (
         (pts_world[:, 0] >= x_min) & (pts_world[:, 0] <= x_max) &
         (pts_world[:, 1] >= y_min) & (pts_world[:, 1] <= y_max) &
@@ -151,8 +145,6 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     pcd.colors = o3d.utility.Vector3dVector(colors_filtered)
     nubes.append((pcd, o_T_c_left))
 
-# o3d.visualization.draw_geometries([pcd])
-# Merge all transformed clouds into a single cloud
 combined = o3d.geometry.PointCloud()
 
 for idx, (pc, T) in enumerate(nubes):
@@ -168,4 +160,4 @@ print(f"{object_height:.1f} mm")
 print(f"{object_height/10:.1f} cm")
 
 o3d.visualization.draw_geometries([combined])
-o3d.io.write_point_cloud("nubeDePuntosBuddha.ply", combined)
+o3d.io.write_point_cloud("nube_de_puntos_buddha.ply", combined)
