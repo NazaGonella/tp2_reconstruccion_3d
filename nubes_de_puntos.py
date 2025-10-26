@@ -7,9 +7,7 @@ import cv2
 # Cre Stereo
 
 import os
-import json
 from pathlib import Path
-
 from disparity.method_cre_stereo import CREStereo
 from disparity.method_opencv_bm import StereoBM, StereoSGBM
 from disparity.methods import Calibration, InputPair, Config
@@ -18,26 +16,17 @@ img=cv2.imread("./data/fotos_buddha_rectificadas/left_1_rect.jpg")
 
 w, h = img.shape[1], img.shape[0]
 
-
-
 with open("./data/calibracion_buddha/stereo_calibration_new.pkl", "rb") as f:
     c = pickle.load(f)
 
-# Intrinsic matrices
 K1 = c['left_K']
 K2 = c['right_K']
 
-# K = [[fx, 0, cx],
-#      [0, fy, cy],
-#      [0,  0,  1]]
-
 fx  = K1[0, 0]
 fy  = K1[1, 1]
-cx0 = K1[0, 2]  # principal point x of left camera
-cy0 = K1[1, 2]  # principal point y of left camera
+cx0 = K1[0, 2]
+cy0 = K1[1, 2]
 
-# cx1 is from the rectified right projection matrix P2
-# Compute rectification first:
 R = c['R']
 T = c['T']
 image_size = c['image_size']
@@ -51,17 +40,13 @@ R1, R2, P1, P2, Q, _, _ = cv2.stereoRectify(
     flags=cv2.CALIB_ZERO_DISPARITY, alpha=0
 )
 
-
 if 'reprojection_error' in c:
     print(f"Calibration reprojection error: {c['reprojection_error']}")
 
-
-K1_rect = P1[:3, :3]  # Use rectified camera matrix
+K1_rect = P1[:3, :3]
 K2_rect = P2[:3, :3]
 
-cx1 = P2[0, 2]  # principal point x of rectified right camera
-
-
+cx1 = P2[0, 2]
 
 baseline = np.linalg.norm(T)
 calibration = Calibration(**{
@@ -119,47 +104,18 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     c_T_o_left = np.vstack((c_T_o_left, [0, 0, 0, 1]))
     o_T_c_left = np.linalg.inv(c_T_o_left)        # object to camera transformation
 
-
-
-    # #imagen derecha
-    # right_rectified_gray=cv2.cvtColor(right_rectified,cv2.COLOR_RGB2GRAY)
-    # right_rectified_gray = right_rectified_gray.astype(np.uint8)
-
-    # right_found,right_corners=calib.detect_board(checkerboard,right_rectified_gray)
-
-    # print(f"Left corner Y: {left_corners[0, 0, 1]}")
-    # print(f"Right corner Y: {right_corners[0, 0, 1]}")
-    # print(f"Y difference: {abs(left_corners[0, 0, 1] - right_corners[0, 0, 1])}")
-
-
     models_path = "models"
     if not os.path.exists(models_path):
         os.makedirs(models_path)
 
-
-
-
-    #models_path = Path.home() / ".cache" / "stereodemo" / "models"
     models_path = Path(models_path)
     pair = InputPair(left_rectified, right_rectified, calibration)
-    # pair = InputPair(left_image, right_image, calibration)
     config = Config(models_path=models_path)
 
-    # params = {
-    #    "Shape": "1280x720",
-    #    "Mode": "combined",
-    #    "Iterations": 20
-    #}
     method = CREStereo(config)
 
-    #method.parameters["Shape"].set_value("640x480")
     method.parameters["Shape"].set_value("1280x720")
-    # method.parameters["Iterations"].set_value("10")
 
-    #method.parameters.update(params)
-    # method = StereoBM(config)
-    # method = StereoSGBM(config)
-    # method = StereoBM(config)
     disparity = method.compute_disparity(pair)
 
     disp = disparity.disparity_pixels.astype(np.float32)
@@ -170,18 +126,12 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     points = points_3D[mask]
     colors = left_rectified[mask] / 255.0  # normalize colors to [0, 1]
 
-    # pcd = o3d.geometry.PointCloud()
-    # pcd.points = o3d.utility.Vector3dVector(points)
-    # pcd.colors = o3d.utility.Vector3dVector(colors)
-    # nubes.append(pcd)
-
     # transform points from left-camera coordinates to object/checkerboard (world) coordinates
     pts_h = np.hstack([points, np.ones((points.shape[0], 1), dtype=points.dtype)])  # (N,4)
     pts_world = (o_T_c_left @ pts_h.T).T[:, :3]  # use the camera->object 4x4 matrix you computed
 
 ##### para la bounding box
     # Define bounding box in world coordinates (mm)
-    # Adjust these values based on your object's position
     x_min, x_max = -100, 200   # X range
     y_min, y_max = -350, -100   # Y range  
     z_min, z_max = -300, 20   # Z range (above checkerboard)
@@ -199,34 +149,14 @@ for i in range(0,6):      #tenemos 21 imagenes de banana
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pts_world_filtered)
     pcd.colors = o3d.utility.Vector3dVector(colors_filtered)
-    # z_coords = pts_world_filtered[:, 2]
-    # object_height = z_coords.max()-z_coords.min()  # Height above checkerboard
-    # print(f"\n=== Object Height image {i}===")
-    # print(f"{object_height:.1f} mm")
-#####
-    # pcd = o3d.geometry.PointCloud()
-    # pcd.points = o3d.utility.Vector3dVector(pts_world)
-    # pcd.colors = o3d.utility.Vector3dVector(colors)
-    # store tuple (pointcloud, camera->world transform) if you want frames later
     nubes.append((pcd, o_T_c_left))
 
 # o3d.visualization.draw_geometries([pcd])
 # Merge all transformed clouds into a single cloud
 combined = o3d.geometry.PointCloud()
 
-# frames = []
-# # optional: board/world origin frame
-# frame_board = o3d.geometry.TriangleMesh.create_coordinate_frame(size=50.0, origin=[0, 0, 0])
-# frames.append(frame_board)
-
 for idx, (pc, T) in enumerate(nubes):
-    # pc is already in world coordinates (we transformed above), so just add
     combined += pc
-#     # add a camera frame (camera pose expressed in world coordinates is inverse of o_T_c if needed)
-#     cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=20.0)
-#     # T is camera->world (o_T_c_left). If T maps differently, adjust accordingly.
-#     cam_frame.transform(T)
-#     frames.append(cam_frame)
 
 
 all_points = np.asarray(combined.points)
@@ -239,7 +169,3 @@ print(f"{object_height/10:.1f} cm")
 
 o3d.visualization.draw_geometries([combined])
 o3d.io.write_point_cloud("nubeDePuntosBuddha.ply", combined)
-
-
-
-
