@@ -27,7 +27,7 @@ import numpy as np
 #     alpha=0
 # )
 
-with open("./data/calibracionBuddha/stereo_maps_new.pkl", "rb") as f:
+with open("./data/calibracion_buddha/stereo_maps_new.pkl", "rb") as f:
     maps = pickle.load(f)
 
 left_map_x = maps["left_map_x"]
@@ -38,7 +38,7 @@ right_map_y = maps["right_map_y"]
 
 # === RUTAS ===
 input_dir = "./datasets/stereo_budha_board/captures"
-output_dir = "./fotos_buddha_rectificadas"
+output_dir = "./data/fotos_buddha_rectificadas"
 os.makedirs(output_dir, exist_ok=True)
 
 # === GENERAR MAPAS DE RECTIFICACIÓN ===

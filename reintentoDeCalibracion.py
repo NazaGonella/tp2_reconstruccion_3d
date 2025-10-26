@@ -132,7 +132,7 @@ calibration_data = {
     'Q': Q
 }
 
-with open('./data/calibracionBuddha/stereo_calibration_new.pkl', 'wb') as f:
+with open('./data/calibracion_buddha/stereo_calibration_new.pkl', 'wb') as f:
     pickle.dump(calibration_data, f)
 
 maps_data = {
@@ -142,7 +142,7 @@ maps_data = {
     'right_map_y': right_map_y
 }
 
-with open('./data/calibracionBuddha/stereo_maps_new.pkl', 'wb') as f:
+with open('./data/calibracion_buddha/stereo_maps_new.pkl', 'wb') as f:
     pickle.dump(maps_data, f)
 
 print("\n✓ Calibration saved to:")

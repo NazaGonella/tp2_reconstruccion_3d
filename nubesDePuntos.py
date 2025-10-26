@@ -1,4 +1,3 @@
-
 import calib
 import pickle
 import numpy as np
@@ -15,13 +14,13 @@ from disparity.method_cre_stereo import CREStereo
 from disparity.method_opencv_bm import StereoBM, StereoSGBM
 from disparity.methods import Calibration, InputPair, Config
 
-img=cv2.imread("./fotos_buddha_rectificadas/left_1_rect.jpg")
+img=cv2.imread("./data/fotos_buddha_rectificadas/left_1_rect.jpg")
 
 w, h = img.shape[1], img.shape[0]
 
 
 
-with open("./data/calibracionBuddha/stereo_calibration_new.pkl", "rb") as f:
+with open("./data/calibracion_buddha/stereo_calibration_new.pkl", "rb") as f:
     c = pickle.load(f)
 
 # Intrinsic matrices
@@ -87,8 +86,8 @@ object_3dpoints_mm=object_3dpoints*cuadradito_size_mm
 nubes=[]
 
 for i in range(0,6):      #tenemos 21 imagenes de banana
-    left_rectified=cv2.imread(f"./fotos_buddha_rectificadas/left_{i}_rect.jpg")
-    right_rectified=cv2.imread(f"./fotos_buddha_rectificadas/right_{i}_rect.jpg")
+    left_rectified=cv2.imread(f"./data/fotos_buddha_rectificadas/left_{i}_rect.jpg")
+    right_rectified=cv2.imread(f"./data/fotos_buddha_rectificadas/right_{i}_rect.jpg")
     left_rectified=cv2.cvtColor(left_rectified,cv2.COLOR_BGR2RGB)
     right_rectified=cv2.cvtColor(right_rectified,cv2.COLOR_BGR2RGB)
 
